@@ -1,0 +1,46 @@
+services:
+  db:
+    platform: linux/x86_64
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: 'root'
+    ports:
+     - ${DOCKER_DB_PORT}:3306
+    networks:
+     - appnet
+    volumes:
+     - dbdata:/var/lib/mysql
+     - ./docker/mysql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  adminer:
+    image: adminer:latest
+    restart: always
+    environment:
+      ADMINER_DESIGN: 'hever'
+    ports:
+      - 9090:8080
+    networks:
+      - appnet
+  data_generator:
+    image: python:3.9
+    container_name: db_test_generator
+    networks:
+     - appnet
+    volumes:
+     - .:/workspace
+    working_dir: /workspace/scripts
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "pip install -r requirements.txt && tail -f /dev/null"
+    restart: unless-stopped
+
+volumes:
+  dbdata:
+
+networks:
+  appnet:
